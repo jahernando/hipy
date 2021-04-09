@@ -40,7 +40,7 @@ def curve_fit(x     : np.array,
     x   : np.array, x component of data
     y   : np.array. y component of data
     fun : str or callable, 
-        if callable fun(x, y, *args), where *args are the arguments of the function to fit
+        if callable y = fun(x, *args), where *args are the arguments of the function to fit
         if str: the name of the function, 
             single functions  : 'norm', 'exp', 'polynomial.1', ...
             composed functions: 'exp+norm', ...
@@ -49,7 +49,7 @@ def curve_fit(x     : np.array,
     sigma  : np.array, the errors on the y-coordinate, 
              if None, will consider statistical errors: max(sqrt(y), 2.4)
     mask   : np.array(bool),  
-        mask any parameter in the fit. (True, False), the second parameters is not fitted
+        mask any parameter in the fit. For example, for a 2 dim parameters, (True, False), the second parameters is not fitted
         The default is None. Fit all parameters
     **kargs : dict,
         key arguments for optimize.curve_fit method in scipy
