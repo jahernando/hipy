@@ -1,2 +1,2 @@
 # hipy
-Extend and Decorate Fitting (spicy) and Plotting (matplotlib)
+Extend and Decorate Fitting (scipy) and Plotting (matplotlib)
