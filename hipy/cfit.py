@@ -33,7 +33,7 @@ def curve_fit(x     : np.array,
               mask  : np.array = None, 
               **kargs):
     """
-    Fit a curve y = fun(x, p0), where p0 are the parameters of the curve
+    Fit a curve y = fun(x, *p0), where p0 are the parameters of the curve
     
     Parameters
     ----------
@@ -107,56 +107,10 @@ def curve_fit(x     : np.array,
     return pars, upars, xfun
 
 
-# def residuals(x     : np.array, 
-#               y     : np.array, 
-#               fun   : callable, 
-#               sigma : np.array = None):
-#     """
-    
-#     Compute the residuals of a function: (y - fun(x))/sigma
-
-#     Parameters
-#     ----------
-#     x     : np.array
-#     y     : np.array
-#     fun   : callable, function y = f(x)
-#     sigma : np.array, optional errors. The default is None. 
-
-#     Returns
-#     -------
-#     res : np.array,residuals 
-    
-#     """
-#     ye = np.maximum(2.4, np.sqrt(y)) if sigma is None else sigma
-#     res = (y - fun(x))/ye
-#     return res
-
-
-# def chisq(res : np.array, 
-#           ndf : int = 1):
-#     """
-    
-#     Compute a chis2 given residuals an ndf
-
-#     Parameters
-#     ----------
-#     res : np.array, residuals
-#     ndf : int, optional
-#         number of degrees of freedom
-        
-#     Returns
-#     -------
-#     chi2 : float
-#         chi-sq
-
-#     """
-#     return np.sum(res * res)/ndf
-    
-
 def curve(name: str):
     """
     
-    returns a function, a ruve y = fun(x, *pars), given a name.
+    returns a curve, a function, y = fun(x, *pars), given a name.
     pars are the parameters of the curve
 
     Parameters
@@ -164,7 +118,7 @@ def curve(name: str):
     name : str
         name of the function.
         single names: 'norm' == 'gaus', 'exp', 'poynomial.1'
-        composed    : 'norm+gaus', 'polynomial.1+gaus'
+        composed    : 'exp+gaus', 'polynomial.1+gaus'
         valid names : the names of the stats function in scipy.stats, polynomial of numpy 
 
     Returns
