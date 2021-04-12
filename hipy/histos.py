@@ -125,7 +125,7 @@ def in_nsigmas_of_profile(x       : np.array,
         xp, yp = x[sel], y[sel]
         ysize, xedges, ymed, ystd, yumed = hprofile(xp, yp, nbins, xrange, yrange)
         sel = _sel(x, y, xedges, ymed, ystd)
-        print(i, np.sum(sel))
+        #print(i, np.sum(sel))
         
     return sel
     
