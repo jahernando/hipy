@@ -486,7 +486,7 @@ def hfitprofile(x         : np.array,
     label    = label_parameters(pars, upars, parnames, formate = formate)
 
     yerr = ystd if std else yumed
-    hfun(edges, ymed, ffun, yerr, label = label,
+    hfun(xc, ymed, ffun, yerr, label = label,
          mode = mode, residuals = residuals,
          funopts = funopts, **kargs)
     
