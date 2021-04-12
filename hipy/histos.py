@@ -83,3 +83,49 @@ def hprofile(x : np.array, y: np.array, bins: int,
  
     return ysize, xedges, ymean, ystd, yumean
     
+
+
+def in_nsigmas_of_profile(x       : np.array,
+                          y       : np.array,
+                          nbins   : int,
+                          xrange  : tuple = None,
+                          yrange  : tuple = None,
+                          nsigmas : float = 2.,
+                          niter   : int = 1):
+    """
+    
+    returns the selection of the (x, y) that are in nsigmas inside the profile
+    defined by the ranges (xrange, yrange) and nbins.
+
+    Parameters
+    ----------
+    x       : np.array
+    y       : np.array
+    nbins   : int, number of x-bins of the profile
+    xrange  : tuple, optional. x-range. Default is None.
+    yrange  : tuple, optional. y-range. Default is None
+    nsigmas : float, optional. number of sigmas inside the profile. Default is 2.
+    niter   : int, optional. number of iterations. The default is 1.
+
+    Returns
+    -------
+    sel     : np.array(bool). bool-array with True/False if (x, y) if in the selection.
+
+    """
+            
+    sel  = ut.in_range(x, xrange) & ut.in_range(y, yrange)
+    
+    def _sel(x, y, xedges, ymed, ystd):
+        ipos  = np.digitize(x, xedges) - 1
+        ipos  = np.minimum(ipos, nbins - 1)
+        ipos  = np.maximum(0, ipos)
+        return abs(y - ymed[ipos]) / ystd[ipos] < nsigmas
+    
+    for i in range(niter):
+        xp, yp = x[sel], y[sel]
+        ysize, xedges, ymed, ystd, yumed = hprofile(xp, yp, nbins, xrange, yrange)
+        sel = _sel(x, y, xedges, ymed, ystd)
+        print(i, np.sum(sel))
+        
+    return sel
+    
