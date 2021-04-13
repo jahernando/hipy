@@ -303,8 +303,10 @@ def hfun(x         : np.array,
 
     """
 
-    
-    ye = ut.yerrors(y) if ye is None else ye    
+
+    x, y = np.array(x), np.array(y)    
+
+    ye = ut.yerrors(y) if ye is None else np.array(ye)    
     
     xc = x if len(x) == len(y) else ut.centers(x)
     
