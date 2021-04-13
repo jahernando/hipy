@@ -125,7 +125,7 @@ def label_parameter(name    : str,
                     formate : str = formate) -> str:
     s = name + ' = '
     s += (('{0:'+formate+'}').format(value))
-    if (error is not None):
+    if (error != None):
         s += (r'$\pm$ {0:'+formate+'}').format(error)
     return s
 
@@ -136,7 +136,7 @@ def label_parameters(pars     : np.array,
                      formate  : str = formate) -> str:
     
     label = ''
-    upars = upars if upars is None else len(pars)* [None,]
+    upars = len(pars)* [None,] if upars is None else upars
     for pname, par, upar in zip(parnames, pars, upars):
         label += label_parameter(pname, par, upar, formate) + '\n'
     return label
@@ -389,9 +389,9 @@ def hresiduals(x       : np.array,
 def hprofile(x      : np.array, 
              y      : np.array, 
              bins   : int, 
-             xrange : tuple = None, 
-             yrange : tuple = None, 
+             xrange : tuple = None,
              std    : bool = False, 
+             percentile : bool = False,
              **kargs):
     """
     
@@ -404,26 +404,27 @@ def hprofile(x      : np.array,
     y       : np.array
     bins    : int, number of bins, or np.array with the bins
     xrange  : tuple, optional. The default is None.
-    yrange  : tuple, optional.The default is None.
     std     : bool, standard deviation or mean error. The default is False.
+    percentile : bool, equal number of counts bins. Defaults is False
     **kargs : dict, key arguments for plot.
 
     Returns
     -------
-    ysize  : np.array, counts in x-bins
-    xedges : np.array, edges of the x-bins
+    counts : np.array, counts in x-bins
+    xmean  : np.array, x-mean of the x-bins
+    xstd   : np.array, x-std of the x-bins
     ymean  : np.array, y-mean in x-bins
     ystd   : np.array, y-std  in x-bins
-    yumean : np.array, uncertainty in y-mean in x-bins
     """
     
-    ysize, edges, ymed, ystd, yumed = histos.hprofile(x, y, bins, xrange, yrange)
+    counts, xmean, xstd, ymean, ystd =  \
+        histos.hprofile(x, y, bins, xrange, percentile = percentile)
     
-    centers = 0.5* (edges[1:] + edges[:-1])
-    yerr = ystd if std else yumed
-    plt.errorbar(centers, ymed, yerr, **kargs)
+    yerr = ystd if std else ystd/np.sqrt(counts)
+    xerr = xstd if std else xstd/np.sqrt(counts)
+    plt.errorbar(xmean, ymean, yerr, xerr, **kargs)
     
-    return ysize, edges, ymed, ystd, yumed 
+    return counts, xmean, xstd, ymean, ystd
 
 
 def hfitprofile(x         : np.array, 
@@ -431,8 +432,8 @@ def hfitprofile(x         : np.array,
                 bins      : int,
                 fun       : str, 
                 xrange    : tuple = None, 
-                yrange    : tuple = None,
                 std       : bool = False,
+                percentile : bool = False,
                 p0        : np.array = None, 
                 parnames  : tuple = None,
                 formate   : str = formate,
@@ -453,8 +454,8 @@ def hfitprofile(x         : np.array,
     bins      : int. number of bins
     fun       : str. name of the function. i.e 'poly.1'
     xrange    : tuple, optional. x-range. The default is None.
-    yrange    : tuple, optional  y-range. The default is None.
     std       : bool, optional. Use as yerrors the std. The default is False.
+    percentile : bool, equal number of counts bins. Defaults is False
     p0        : np.array, optional. Initial parameters to start the fit.The default is None.
     parnames  : tuple, optional. Names of the parameters. The default is None.
     formate   : str, optional. Formate for the parameters on the legend. The default is formate.
@@ -466,31 +467,32 @@ def hfitprofile(x         : np.array,
 
     Returns
     -------
-    ymed  : np.array. y profile values.
-    edges : np.array, edges of the x-bins.
-    yerr  : np.array. Errors of the y values.
-    pars  : np.array. Parameters of the fit.
-    upars : np.array. Errors of the parameters.
-    ffun  : callable. Function y = f(x) of the fit.
+    xmean  : np.array, x-mean of the x-bins.
+    ymean  : np.array, x-mean of the x-bins.
+    yerr   : np.array. Errors of the y values.
+    pars   : np.array. Parameters of the fit.
+    upars  : np.array. Errors of the parameters.
+    ffun   : callable. Function y = f(x) of the fit.
 
     """
     
-    ysize, edges, ymed, ystd, yumed = \
-        histos.hprofile(x, y, bins, xrange, yrange)
+    counts, xmean, xstd, ymean, ystd = \
+        histos.hprofile(x, y, bins, xrange, percentile = percentile)
      
-    xc = ut.centers(edges)
+    
+    yerr = ystd/np.sqrt(counts)
     pars, upars, ffun \
-        = cfit.curve_fit(xc, ymed, fun,  p0 = p0, sigma = yumed, **fitopts)
+        = cfit.curve_fit(xmean, ymean, fun,  p0 = p0, sigma = yerr, **fitopts)
 
     parnames = cfit.curve_argument_names(fun) if parnames is None else parnames
     label    = label_parameters(pars, upars, parnames, formate = formate)
 
-    yerr = ystd if std else yumed
-    hfun(xc, ymed, ffun, yerr, label = label,
+    yerr = ystd if std else yerr
+    hfun(xmean, ymean, ffun, yerr, label = label,
          mode = mode, residuals = residuals,
          funopts = funopts, **kargs)
     
-    return ymed, edges, yerr, pars, upars, ffun
+    return xmean, ymean, yerr, pars, upars, ffun
 
 
 #    DATA FRAME

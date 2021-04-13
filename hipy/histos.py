@@ -3,6 +3,8 @@ import numpy as np
 import hipy.utils as ut
 import hipy.cfit  as cfit
 
+from scipy.stats import binned_statistic as _profile
+
 
 """
     Extension of mathematical histogram: fitting histogram, profiles
@@ -44,8 +46,12 @@ def hfit(x  : np.array, bins : int, range: tuple = None,
     return yc, edges, ye, pars, epars, ffun
 
 
-def hprofile(x : np.array, y: np.array, bins: int,
-             xrange : tuple = None, yrange : tuple = None):
+def hprofile(x      : np.array,
+             y      : np.array,
+             bins   : int, 
+             xrange : tuple = None,
+             fun    : callable = None,
+             percentile : bool = False):
     """
     
     Compute the profile of y vs x. Accept entries in the x and y ranges.
@@ -59,29 +65,81 @@ def hprofile(x : np.array, y: np.array, bins: int,
     y      : np.array
     bins   : int or np.array with the bin edges
     xrange : tuple, optional, range in x. The default is None.
-    yrange : tuple, optional, range in y. The dafault is None.
-
+    fun    : callable. optional. returns the atray fun(yi) yi, slice of i. 
+             Default is None
+    percentile: bool. optional. Create bins with equal number of counts. 
+    
     Returns
     -------
-    ysize  : np.array, counts in x-bins
-    xedges : np.array, edges of the x-bins
-    ymean  : np.array, y-mean in x-bins
-    ystd   : np.array, y-std  in x-bins
-    yumean : np.array, uncertainty in y-mean in x-bins
+    counts : np.array, counts in x-bins
+    xmean  : np.array, mean average of x in x-slices
+    xstd   : np.array, std of x in x-slices
+    ymean  : np.array, y-mean in x-slices
+    ystd   : np.array, y-std  in x-slices
+    yfun   : np.array, fun(y_i). only if fun is provided
     """
-
-    sel = (ut.in_range(x, xrange)) & (ut.in_range(y, yrange))
+        
+    sel = ut.in_range(x, xrange)
     xp, yp = x[sel], y[sel] 
-    ysize, xedges = np.histogram(xp, bins = bins, range = xrange)
     
-    ipos = np.digitize(xp, xedges) - 1
+    if (percentile and type(bins == int)):
+        bins = np.percentile(xp, np.linspace(0., 100., bins))
     
-    nbins = len(xedges) -1
-    ymean  = np.array([np.mean(yp[ipos == i]) for i in range(nbins)])
-    ystd   = np.array([np.std (yp[ipos == i]) for i in range(nbins)])
-    yumean = ystd/np.sqrt(ysize)
+    counts, edges, ipos = _profile(xp, yp, 'count', bins, xrange)
+    
+    nbins = len(edges)
+    xmean = np.array([np.mean(xp[ipos == i]) for i in range(1, nbins)])
+    xstd  = np.array([np.std (xp[ipos == i]) for i in range(1, nbins)])
+    ymean = np.array([np.mean(yp[ipos == i]) for i in range(1, nbins)])
+    ystd  = np.array([np.std (yp[ipos == i]) for i in range(1, nbins)])
+    
+    res = (counts, xmean, xstd, ymean, ystd)
+
+    if (fun is not None):
+        yval = np.array([fun   (yp[ipos == i]) for i in range(1, nbins)])
+        res  = *res, yval
+
+    return res
+    
+
+# def hprofile(x : np.array, y: np.array, bins: int,
+#              xrange : tuple = None, yrange : tuple = None):
+#     """
+    
+#     Compute the profile of y vs x. Accept entries in the x and y ranges.
+#     Create partition in x-range with bins.
+#     Returns the counts, mean, average and error in the average in each x-bin.
+#     If there is no entries in a given bin, it returns nan.
+
+#     Parameters
+#     ----------
+#     x      : np.array
+#     y      : np.array
+#     bins   : int or np.array with the bin edges
+#     xrange : tuple, optional, range in x. The default is None.
+#     yrange : tuple, optional, range in y. The dafault is None.
+
+#     Returns
+#     -------
+#     ysize  : np.array, counts in x-bins
+#     xedges : np.array, edges of the x-bins
+#     ymean  : np.array, y-mean in x-bins
+#     ystd   : np.array, y-std  in x-bins
+#     yumean : np.array, uncertainty in y-mean in x-bins
+#     """
+
+#     sel = (ut.in_range(x, xrange)) & (ut.in_range(y, yrange))
+#     xp, yp = x[sel], y[sel] 
+#     ysize, xedges = np.histogram(xp, bins = bins, range = xrange)
+    
+#     ipos = np.digitize(xp, xedges) - 1
+    
+#     nbins = len(xedges) -1
+#     ymean  = np.array([np.mean(yp[ipos == i]) for i in range(nbins)])
+#     ystd   = np.array([np.std (yp[ipos == i]) for i in range(nbins)])
+#     yumean = ystd/np.sqrt(ysize)
  
-    return ysize, xedges, ymean, ystd, yumean
+#     return ysize, xedges, ymean, ystd, yumean
     
 
 
