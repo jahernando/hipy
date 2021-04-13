@@ -11,8 +11,12 @@ from scipy.stats import binned_statistic as _profile
 """
 
 
-def hfit(x  : np.array, bins : int, range: tuple = None,
-        fun : str = 'gaus', guess : tuple = None, **kargs) -> tuple:
+def hfit(x     : np.array, 
+         bins  : int, 
+         range : tuple = None,
+         fun   : str = 'gaus',
+         p0    : np.array = None,
+         **kargs) -> tuple:
     """
 
 
@@ -40,7 +44,7 @@ def hfit(x  : np.array, bins : int, range: tuple = None,
     xc        = 0.5 * (edges[1:] + edges[:-1])
     ye        = np.maximum(2.4, np.sqrt(yc))
     
-    pars, epars, ffun = cfit.curve_fit(xc, yc, p0 = guess, sigma = ye, 
+    pars, epars, ffun = cfit.curve_fit(xc, yc, p0 = p0, sigma = ye, 
                                        fun = fun, **kargs)
 
     return yc, edges, ye, pars, epars, ffun
