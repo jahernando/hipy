@@ -3,7 +3,7 @@
 """
 
 import numpy   as np
-#import pandas  as pd
+import pandas  as pd
 
 
 #--- general utilies
@@ -150,6 +150,37 @@ def efficiency(selection : np.array, norma : int = None) -> tuple:
     ueff  = np.sqrt(eff * (1- eff) / norma)
     return eff, ueff
 
+
+def df_values(df    : pd.DataFrame,
+               names : tuple, 
+               sel   : np.array = None):
+    """
+    
+    returns a list of np.arrays with the values of variables with names
+    that pass a selection
+
+    Parameters
+    ----------
+    df    : pd.DataFrame
+    names : tuple(str), list with the names of the variables
+    sel   : np.array(bool), selection of the rows of DF. 
+            Must be of the same length of df.
+            Default is None
+
+    Returns
+    -------
+    vals  : list(np.array), list with the arrays of the variables with names
+        that pass the selection
+
+    """
+    
+    sel = np.ones(len(df), bool) if sel is None else sel
+    assert len(sel) == len(df), \
+        'Same length of the selection and the number of rows in DF required'
+    
+    xdf  = df[sel]
+    vals = [xdf[name].values for name in names]
+    return vals
 
 
 # def selection(df : pd.DataFrame, columns : tuple, ranges = tuple) -> np.array:
