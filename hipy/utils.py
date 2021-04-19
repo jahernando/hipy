@@ -79,17 +79,28 @@ def yerrors(y      : np.array,
     
 
 
-# def arscale(x, scale = 1.):
-#     """ return an array between [0., 1.]
-#     inputs:
-#         x    : np.array,
-#         scale: float (1.)
-#     returns:
-#         np.arry with scaled balues, [0, scale]
-#     """
-#     xmin, xmax = np.min(x), np.max(x)
-#     rx = scale * (x - xmin)/(xmax - xmin)
-#     return rx
+def arscale(x     : np.array,
+            scale : float = 1.):
+    """
+    
+    rscale the array between [0, scale]
+
+    Parameters
+    ----------
+    x     : np.array
+    scale : float, optional, maximum value of the scale
+         The default is 1.
+
+    Returns
+    -------
+    rx    : np.array
+
+    """
+    
+    xmin, xmax = np.min(x), np.max(x)
+    rx = scale * (x - xmin)/(xmax - xmin)
+    
+    return rx
 #
 #
 # def arstep(x, step, delta = False):
