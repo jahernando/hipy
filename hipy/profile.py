@@ -119,16 +119,16 @@ def profile_scale(coors, weights, profile, scale = 1.):
     return cor_weights
     
 
-def plot_profile(profile, nbins = 50):
+def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')):
     """
     Plot profile
     """
     
-    counts = profile.counts
-    e0     = profile.mean
-    std    = profile.std
-    chi2   = profile.chi2
-    pval   = profile.pvalue
+    #counts = profile.counts
+    #mean   = profile.mean
+    #std    = profile.std
+    #chi2   = profile.chi2
+    #pval   = profile.pvalue
     cbins  = profile.bin_centers
     ebins  = profile.bin_edges
     #res    = profile.residuals
@@ -137,9 +137,11 @@ def plot_profile(profile, nbins = 50):
         canvas = pltext.canvas(2, 2)
         canvas(1)
         pltext.hist(cbins[0], bins = ebins[0], weights = var, stats = False);
-        plt.xlabel('drift time (ms)'); plt.ylabel(title);
+        name = coornames[0]
+        plt.xlabel(name); plt.ylabel(title);
         canvas(2)
-        pltext.hist(var, nbins);
+        uvar = np.nan_to_num(var, 0.)
+        pltext.hist(uvar, nbins);
         plt.xlabel(title)
         plt.tight_layout();
         return
@@ -149,7 +151,8 @@ def plot_profile(profile, nbins = 50):
         canvas = pltext.canvas(2, 2)
         canvas(1)
         plt.hist2d(mesh[0].ravel(), mesh[1].ravel(), bins = ebins, weights = var.T.ravel());
-        plt.xlabel('x'); plt.ylabel('y'); plt.title(title);
+        xname, yname = coornames[0], coornames[1]
+        plt.xlabel(xname); plt.ylabel(yname); plt.title(title);
         plt.colorbar();
         canvas(2)
         uvar = np.nan_to_num(var.ravel(), 0.)
@@ -166,7 +169,9 @@ def plot_profile(profile, nbins = 50):
             canvas(1)
             plt.hist2d(mesh[0].ravel(), mesh[1].ravel(), bins = ebins[:-1], 
                        weights = var.T.ravel());
-            plt.xlabel('x'); plt.ylabel('y'); plt.title(title);
+            xname, yname, zname = coornames[0], coornames[1], coornames[2]
+            plt.xlabel(xname); plt.ylabel(yname); 
+            plt.title(title + ', {:s} = {:4.2f} '.format(zname, cbins[-1][i]));
             plt.colorbar();
             canvas(2)
             xvar = np.nan_to_num(var.ravel(), 0.)
@@ -179,6 +184,11 @@ def plot_profile(profile, nbins = 50):
     ndim = len(profile.counts.shape)
     _var = _vars[ndim]
         
-    for var, name in zip((counts, e0, std, chi2, pval),
-                         ('counts', 'mean', 'std', 'chi2', 'pvalue')):
+
+    stats = ('counts', 'mean', 'std', 'chi2', 'pvalue') if stats == 'all' else stats
+    
+    for name in stats:
+        
+        var = getattr(profile, name)
+        
         _var(var, name)
