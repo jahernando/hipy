@@ -18,7 +18,7 @@ import hipy.pltext       as pltext
 
 
 Profile = namedtuple('Profile', 
-                     ('counts', 'mean', 'std', 'chi2', 'pvalue',
+                     ('counts', 'mean', 'std', 'chi2', 'pvalue', 'success',
                       'bin_centers', 'bin_edges', 'bin_indices', 'residuals'))
 
 def _residuals(values, mean, std, ibins):
@@ -44,7 +44,7 @@ def _correction(values, mean, ibins, scale = 1.):
     return np.array(corvalues, float)
 
 
-def profile(coors, weights , bins = 20, ncounts_min = 3):
+def profile(coors, weights , bins = 20, counts_min = 3):
     """
     
 
@@ -54,7 +54,7 @@ def profile(coors, weights , bins = 20, ncounts_min = 3):
     weights     : np.array, values of the weights
     bins        : int, typle(int), or typle(np.array), bins of the profile.
                   Default = 20 in each dimension
-    ncounts_min : int, minimum counts in bin to compute the p-value. 
+    counts_min  : int, minimum counts in bin to compute the p-value. 
                   Default = 3
 
     Returns
@@ -80,12 +80,14 @@ def profile(coors, weights , bins = 20, ncounts_min = 3):
     chi2, _ , _ = stats.binned_statistic_dd(coors, res * res, bins = bins, statistic = 'sum')
     #sf          = stats.chi2.sf(chi2, counts)
     
-    pvalue      = lambda x : stats.shapiro(x)[1] if (len(x) > 3) else 0.
+    pvalue      = lambda x : stats.shapiro(x)[1] if (len(x) > counts_min) else 0.
     pval, _, _  = stats.binned_statistic_dd(coors, weights, bins = bins, statistic = pvalue)
         
+    success     = counts > counts_min
+    
     cbins       = [0.5 * (x[1:] + x[:-1]) for x in ebins]
     
-    return Profile(counts, mean, std, chi2, pval, cbins, ebins, ibins, res)
+    return Profile(counts, mean, std, chi2, pval, success, cbins, ebins, ibins, res)
 
 
 def profile_scale(coors, weights, profile, scale = 1.):
@@ -131,17 +133,18 @@ def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')
     #pval   = profile.pvalue
     cbins  = profile.bin_centers
     ebins  = profile.bin_edges
+    mask   = profile.success
     #res    = profile.residuals
 
     def _var1(var, title):
         canvas = pltext.canvas(2, 2)
         canvas(1)
-        pltext.hist(cbins[0], bins = ebins[0], weights = var, stats = False);
+        pltext.hist(cbins[0][mask], bins = ebins[0], weights = var[mask], stats = False);
         name = coornames[0]
         plt.xlabel(name); plt.ylabel(title);
         canvas(2)
         uvar = np.nan_to_num(var, 0.)
-        pltext.hist(uvar, nbins);
+        pltext.hist(uvar[mask], nbins);
         plt.xlabel(title)
         plt.tight_layout();
         return
@@ -150,13 +153,13 @@ def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')
         mesh   = np.meshgrid(cbins[0], cbins[1])
         canvas = pltext.canvas(2, 2)
         canvas(1)
-        plt.hist2d(mesh[0].ravel(), mesh[1].ravel(), bins = ebins, weights = var.T.ravel());
+        plt.hist2d(mesh[0][mask].ravel(), mesh[1][mask].ravel(), bins = ebins, 
+                   weights = var[mask].T.ravel());
         xname, yname = coornames[0], coornames[1]
         plt.xlabel(xname); plt.ylabel(yname); plt.title(title);
         plt.colorbar();
         canvas(2)
-        uvar = np.nan_to_num(var.ravel(), 0.)
-        pltext.hist(uvar, nbins);
+        pltext.hist(var[mask].ravel(), nbins);
         plt.xlabel(title)
         plt.tight_layout();
         return
@@ -164,18 +167,18 @@ def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')
     def _var3(uvar, title):
         mesh   = np.meshgrid(cbins[0], cbins[1])
         for i in range(len(cbins[-1])):
-            var = uvar[:, :, i]
+            var   = uvar[:, :, i]
+            imask = mask[:, :, i] 
             canvas = pltext.canvas(2, 2)
             canvas(1)
-            plt.hist2d(mesh[0].ravel(), mesh[1].ravel(), bins = ebins[:-1], 
-                       weights = var.T.ravel());
+            plt.hist2d(mesh[0][imask].ravel(), mesh[1][imask].ravel(), bins = ebins[:-1], 
+                       weights = var[imask].T.ravel());
             xname, yname, zname = coornames[0], coornames[1], coornames[2]
             plt.xlabel(xname); plt.ylabel(yname); 
             plt.title(title + ', {:s} = {:4.2f} '.format(zname, cbins[-1][i]));
             plt.colorbar();
             canvas(2)
-            xvar = np.nan_to_num(var.ravel(), 0.)
-            pltext.hist(xvar, nbins);
+            pltext.hist(var[imask].ravel(), nbins);
             plt.xlabel(title)
             plt.tight_layout();
         return
