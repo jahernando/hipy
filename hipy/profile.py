@@ -153,8 +153,10 @@ def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')
         mesh   = np.meshgrid(cbins[0], cbins[1])
         canvas = pltext.canvas(2, 2)
         canvas(1)
-        plt.hist2d(mesh[0][mask].ravel(), mesh[1][mask].ravel(), bins = ebins, 
-                   weights = var[mask].T.ravel());
+        uvar = np.copy(var)
+        if (uvar.dtype != bool): uvar[~mask] = np.nan
+        plt.hist2d(mesh[0].ravel(), mesh[1].ravel(), bins = ebins, 
+                   weights = uvar.T.ravel());
         xname, yname = coornames[0], coornames[1]
         plt.xlabel(xname); plt.ylabel(yname); plt.title(title);
         plt.colorbar();
@@ -171,8 +173,10 @@ def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')
             imask = mask[:, :, i] 
             canvas = pltext.canvas(2, 2)
             canvas(1)
-            plt.hist2d(mesh[0][imask].ravel(), mesh[1][imask].ravel(), bins = ebins[:-1], 
-                       weights = var[imask].T.ravel());
+            vvar = np.copy(var)
+            if (vvar.dtype != bool): vvar[~imask] = np.nan
+            plt.hist2d(mesh[0].ravel(), mesh[1].ravel(), bins = ebins[:-1], 
+                       weights = vvar.T.ravel());
             xname, yname, zname = coornames[0], coornames[1], coornames[2]
             plt.xlabel(xname); plt.ylabel(yname); 
             plt.title(title + ', {:s} = {:4.2f} '.format(zname, cbins[-1][i]));
