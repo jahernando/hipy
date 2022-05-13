@@ -7,7 +7,8 @@ Created on Tue Apr 26 10:25:22 2022
 """
 
 
-import numpy as np
+import numpy  as np
+import pandas as pd
 
 from   collections import namedtuple
 from   scipy       import stats
@@ -17,10 +18,10 @@ import matplotlib.pyplot as plt
 import hipy.pltext       as pltext
 
 
-Profile = namedtuple('Profile', 
-                     ('counts', 'mean', 'std', 'chi2', 'pvalue', 'success',
-                      'bin_centers', 'bin_edges', 'bin_indices', 'residuals'))
-
+profile_names = ('counts', 'mean', 'std', 'chi2', 'pvalue', 'success',
+                 'bin_centers', 'bin_edges')
+Profile        = namedtuple('Profile', profile_names)
+                     
 def _residuals(values, mean, std, ibins):
     
     def _res(val, idx):
@@ -32,6 +33,7 @@ def _residuals(values, mean, std, ibins):
     res = [_res(val, idx) for val, idx in zip(values, zbins)]
     return np.array(res, float)
  
+
 def _correction(values, mean, ibins, scale = 1.):
  
     def _coor(val, idx):
@@ -67,11 +69,10 @@ def profile(coors, weights , bins = 20, counts_min = 3):
     Returns
     -------
     Profile     : (counts, mean, std, chi2, p-value, 
-                   bin centers, bin edges, bin indices, residuals)
-        bin-indices : for every entry of weights the index of its bin
-        residual    : for every weifghts, the residual associated to that bin, that is:
-                      (weight - mean[i]) / std[i], where i is the index of the bin 
-                      assocaited to the weight.
+                   bin centers, bin edges)
+    residual    : for every weifghts, the residual associated to that bin, that is:
+                     (weight - mean[i]) / std[i], where i is the index of the bin 
+                     assocaited to the weight.
     """
     
     counts, ebins, ibins = stats.binned_statistic_dd(coors, weights, 
@@ -84,6 +85,7 @@ def profile(coors, weights , bins = 20, counts_min = 3):
     std, _ , _  = stats.binned_statistic_dd(coors, weights, bins = bins, statistic = 'std')
 
     res         = _residuals(weights, mean, std, ibins)    
+    
     chi2, _ , _ = stats.binned_statistic_dd(coors, res * res, bins = bins, statistic = 'sum')
     #sf          = stats.chi2.sf(chi2, counts)
     
@@ -94,7 +96,7 @@ def profile(coors, weights , bins = 20, counts_min = 3):
     
     cbins       = [0.5 * (x[1:] + x[:-1]) for x in ebins]
     
-    return Profile(counts, mean, std, chi2, pval, success, cbins, ebins, ibins, res)
+    return Profile(counts, mean, std, chi2, pval, success, cbins, ebins), res
 
 
 
@@ -127,6 +129,39 @@ def profile(coors, weights , bins = 20, counts_min = 3):
 
 
 
+
+def _profile_scale(coors, weights, profile, scale = 1.):
+    """
+    
+    Apply corrections from a profile to the weights
+
+    Parameters
+    ----------
+    coors   : tuple(np.array), list of the values of the coordinates, i.e (x, y, z)
+    weights : np.array, values of the weights 
+    profile : Profile, profile named tuple
+    x0      : float, scale
+
+    Returns
+    -------
+    cor_weights : np.array, corrected weights
+    """
+    
+    mean  = profile.mean
+    ebins = profile.bin_edges
+    #ibins = profile.bin_indices
+
+    _, _, ibins = stats.binned_statistic_dd(coors, weights, 
+                                            bins = ebins, statistic = 'count',
+                                            expand_binnumbers = True)
+    ibins = [b-1 for b in ibins]
+    
+    cor_weights = _correction(weights, mean, ibins, scale)
+    
+    return cor_weights
+    
+
+
 def profile_scale(coors, weights, profile, scale = 1.):
     """
     
@@ -156,6 +191,43 @@ def profile_scale(coors, weights, profile, scale = 1.):
     cor_weights = _correction(weights, mean, ibins, scale)
     
     return cor_weights
+    
+
+def save(profile, key, ofilename):
+    
+    odf = {}
+    names = profile._fields[:-2]
+    for name in names: odf[name] = getattr(profile, name).ravel()
+    odf = pd.DataFrame(odf)
+
+    obins = {}    
+    bins  = profile.bin_edges
+    for i, b in enumerate(bins): obins[i] = b
+    obins = pd.DataFrame(obins)
+    
+    odf  .to_hdf(ofilename, key = key + '/profile', mode = 'a')
+    obins.to_hdf(ofilename, key = key + '/bins'   , mode = 'a')
+    
+    return
+
+
+def load(key, ifilename, type = Profile):
+    
+    df     = pd.read_hdf(ifilename, key = key + '/profile')
+    dfbins = pd.read_hdf(ifilename, key = key + '/bins')
+
+    nbins       = len(dfbins.columns)
+    bin_edges   = [dfbins[i].values for i in range(nbins)]
+    bin_centers = [0.5*(b[1:] + b[:-1]) for b in bin_edges]
+    
+    shape  = tuple([len(b)-1 for b in bin_edges])
+
+    names = tuple(df.columns)    
+    vars   = [df[name].values.reshape(shape) for name in names]
+
+    prof = type(*vars, bin_centers, bin_edges)
+    
+    return prof
     
 
 #---- Plotting
