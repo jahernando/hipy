@@ -35,13 +35,20 @@ def _residuals(values, mean, std, ibins):
 def _correction(values, mean, ibins, scale = 1.):
  
     def _coor(val, idx):
-        factor = mean[idx]
-        factor = scale / factor if factor > 0 else 0.
+        try:
+            factor = mean[idx]
+        except:
+            factor = np.nan
+        factor = scale / factor if factor != 0. else np.nan
         return factor * val
 
     zbins = ibins if len(ibins) == len(values) else zip(*ibins)
     corvalues = [_coor(val, idx) for val, idx in zip(values, zbins)]
     return np.array(corvalues, float)
+
+def _index(x, ref = 1000):
+    xid = np.sum([ref**i * xi for i, xi in enumerate(x)], axis = 0)
+    return xid
 
 
 def profile(coors, weights , bins = 20, counts_min = 3):
@@ -90,6 +97,36 @@ def profile(coors, weights , bins = 20, counts_min = 3):
     return Profile(counts, mean, std, chi2, pval, success, cbins, ebins, ibins, res)
 
 
+
+
+# def _profile_scale(coors, weights, profile, scale = 1., mask = None):
+
+#     bins = profile.bin_edges
+#     _, _, ibins = stats.binned_statistic_dd(coors, weights, 
+#                                             bins = bins, statistic = 'count',
+#                                             expand_binnumbers = True)      
+#     ibins = [b-1 for b in ibins]
+    
+#     ref     = 1000
+#     indices = _index(ibins, ref)
+
+    
+#     mask   = profile.success if mask is None else mask
+    
+#     corr_weights = np.ones(len(weights)) * np.nan
+    
+#     for indx in np.argwhere(mask == True):
+#         ijsel = indices == _index(indx, ref)
+#         if (np.sum(ijsel) <= 0): continue
+#         enes  = weights[ijsel]
+#         mean  = profile.mean[tuple(indx)]
+#         cenes = enes * scale /mean
+#         corr_weights[ijsel] = cenes
+
+#     return corr_weights, ibins    
+
+
+
 def profile_scale(coors, weights, profile, scale = 1.):
     """
     
@@ -108,18 +145,20 @@ def profile_scale(coors, weights, profile, scale = 1.):
     """
     
     mean  = profile.mean
-    #ebins = profile.bin_edges
-    ibins = profile.bin_indices
+    ebins = profile.bin_edges
+    #ibins = profile.bin_indices
 
-    # _, _, ibins = stats.binned_statistic_dd(coors, weights, 
-    #                                         bins = ebins, statistic = 'count',
-    #                                         expand_binnumbers = True)
-    # ibins = [b-1 for b in ibins]
+    _, _, ibins = stats.binned_statistic_dd(coors, weights, 
+                                            bins = ebins, statistic = 'count',
+                                            expand_binnumbers = True)
+    ibins = [b-1 for b in ibins]
     
     cor_weights = _correction(weights, mean, ibins, scale)
     
     return cor_weights
     
+
+#---- Plotting
 
 def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')):
     """
