@@ -162,7 +162,7 @@ def _profile_scale(coors, weights, profile, scale = 1.):
     
 
 
-def profile_scale(coors, weights, profile, scale = 1.):
+def profile_scale(coors, weights, profile, scale = 1., mask = None):
     """
     
     Apply corrections from a profile to the weights
@@ -179,18 +179,60 @@ def profile_scale(coors, weights, profile, scale = 1.):
     cor_weights : np.array, corrected weights
     """
     
-    mean  = profile.mean
-    ebins = profile.bin_edges
-    #ibins = profile.bin_indices
+    ndim      = len(coors)
+    bin_edges = profile.bin_edges
+    
+    idx = [np.digitize(coors[i], bin_edges[i])-1          for i in range(ndim)]
+    sel = [(idx[i] >= 0) & (idx[i] < len(bin_edges[i])-1) for i in range(ndim)]
+    sel = np.logical_and(*sel) if ndim >1 else sel[0]
 
-    _, _, ibins = stats.binned_statistic_dd(coors, weights, 
-                                            bins = ebins, statistic = 'count',
-                                            expand_binnumbers = True)
-    ibins = [b-1 for b in ibins]
+    idx    = tuple([idx[i][sel] for i in range(ndim)])
+    ene    = weights[sel] 
     
-    cor_weights = _correction(weights, mean, ibins, scale)
+    mean   = profile.mean
+    mask   = profile.success if mask == None else mask
     
+    mean[~mask] = np.nan
+    
+    mean   = mean[idx]
+
+    vals   = scale * ene / mean
+    
+    cor_weights              = np.nan * np.ones(len(weights))
+    cor_weights[sel == True] = vals
+
     return cor_weights
+    
+
+# def _profile_scale(coors, weights, profile, scale = 1.):
+#     """
+    
+#     Apply corrections from a profile to the weights
+
+#     Parameters
+#     ----------
+#     coors   : tuple(np.array), list of the values of the coordinates, i.e (x, y, z)
+#     weights : np.array, values of the weights 
+#     profile : Profile, profile named tuple
+#     x0      : float, scale
+
+#     Returns
+#     -------
+#     cor_weights : np.array, corrected weights
+#     """
+    
+#     mean  = profile.mean
+#     ebins = profile.bin_edges
+#     #ibins = profile.bin_indices
+
+#     _, _, ibins = stats.binned_statistic_dd(coors, weights, 
+#                                             bins = ebins, statistic = 'count',
+#                                             expand_binnumbers = True)
+#     ibins = [b-1 for b in ibins]
+    
+#     cor_weights = _correction(weights, mean, ibins, scale)
+    
+#     return cor_weights
     
 
 def save(profile, key, ofilename):
@@ -223,6 +265,7 @@ def load(key, ifilename, type = Profile):
     shape  = tuple([len(b)-1 for b in bin_edges])
 
     names = tuple(df.columns)    
+    print(names)
     vars   = [df[name].values.reshape(shape) for name in names]
 
     prof = type(*vars, bin_centers, bin_edges)
