@@ -101,11 +101,13 @@ def profile_scale(coors, weights, profile, scale = 1., mask = None):
     ndim      = len(coors)
     bin_edges = profile.bin_edges
     
-    idx = [np.digitize(coors[i], bin_edges[i])-1          for i in range(ndim)]
-    sel = [(idx[i] >= 0) & (idx[i] < len(bin_edges[i])-1) for i in range(ndim)]
-    sel = np.logical_and(*sel) if ndim >1 else sel[0]
+    idx  = [np.digitize(coors[i], bin_edges[i])-1          for i in range(ndim)]
+    sels = [(idx[i] >= 0) & (idx[i] < len(bin_edges[i])-1) for i in range(ndim)]
+    sel  = sels[0]
+    for isel in sels[1:]: sel = np.logical_and(sel, isel)
 
     idx    = tuple([idx[i][sel] for i in range(ndim)])
+        
     ene    = weights[sel] 
     
     mean   = profile.mean
