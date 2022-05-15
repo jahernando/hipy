@@ -34,25 +34,6 @@ def _residuals(values, mean, std, ibins):
     return np.array(res, float)
  
 
-def _correction(values, mean, ibins, scale = 1.):
- 
-    def _coor(val, idx):
-        try:
-            factor = mean[idx]
-        except:
-            factor = np.nan
-        factor = scale / factor if factor != 0. else np.nan
-        return factor * val
-
-    zbins = ibins if len(ibins) == len(values) else zip(*ibins)
-    corvalues = [_coor(val, idx) for val, idx in zip(values, zbins)]
-    return np.array(corvalues, float)
-
-def _index(x, ref = 1000):
-    xid = np.sum([ref**i * xi for i, xi in enumerate(x)], axis = 0)
-    return xid
-
-
 def profile(coors, weights , bins = 20, counts_min = 3):
     """
     
@@ -68,7 +49,7 @@ def profile(coors, weights , bins = 20, counts_min = 3):
 
     Returns
     -------
-    Profile     : (counts, mean, std, chi2, p-value, 
+    Profile     : (counts, mean, std, chi2, p-value, success, 
                    bin centers, bin edges)
     residual    : for every weifghts, the residual associated to that bin, that is:
                      (weight - mean[i]) / std[i], where i is the index of the bin 
@@ -100,68 +81,6 @@ def profile(coors, weights , bins = 20, counts_min = 3):
 
 
 
-
-# def _profile_scale(coors, weights, profile, scale = 1., mask = None):
-
-#     bins = profile.bin_edges
-#     _, _, ibins = stats.binned_statistic_dd(coors, weights, 
-#                                             bins = bins, statistic = 'count',
-#                                             expand_binnumbers = True)      
-#     ibins = [b-1 for b in ibins]
-    
-#     ref     = 1000
-#     indices = _index(ibins, ref)
-
-    
-#     mask   = profile.success if mask is None else mask
-    
-#     corr_weights = np.ones(len(weights)) * np.nan
-    
-#     for indx in np.argwhere(mask == True):
-#         ijsel = indices == _index(indx, ref)
-#         if (np.sum(ijsel) <= 0): continue
-#         enes  = weights[ijsel]
-#         mean  = profile.mean[tuple(indx)]
-#         cenes = enes * scale /mean
-#         corr_weights[ijsel] = cenes
-
-#     return corr_weights, ibins    
-
-
-
-
-def _profile_scale(coors, weights, profile, scale = 1.):
-    """
-    
-    Apply corrections from a profile to the weights
-
-    Parameters
-    ----------
-    coors   : tuple(np.array), list of the values of the coordinates, i.e (x, y, z)
-    weights : np.array, values of the weights 
-    profile : Profile, profile named tuple
-    x0      : float, scale
-
-    Returns
-    -------
-    cor_weights : np.array, corrected weights
-    """
-    
-    mean  = profile.mean
-    ebins = profile.bin_edges
-    #ibins = profile.bin_indices
-
-    _, _, ibins = stats.binned_statistic_dd(coors, weights, 
-                                            bins = ebins, statistic = 'count',
-                                            expand_binnumbers = True)
-    ibins = [b-1 for b in ibins]
-    
-    cor_weights = _correction(weights, mean, ibins, scale)
-    
-    return cor_weights
-    
-
-
 def profile_scale(coors, weights, profile, scale = 1., mask = None):
     """
     
@@ -172,7 +91,7 @@ def profile_scale(coors, weights, profile, scale = 1., mask = None):
     coors   : tuple(np.array), list of the values of the coordinates, i.e (x, y, z)
     weights : np.array, values of the weights 
     profile : Profile, profile named tuple
-    x0      : float, scale
+    scale   : float, scale
 
     Returns
     -------
@@ -203,39 +122,24 @@ def profile_scale(coors, weights, profile, scale = 1., mask = None):
 
     return cor_weights
     
-
-# def _profile_scale(coors, weights, profile, scale = 1.):
-#     """
-    
-#     Apply corrections from a profile to the weights
-
-#     Parameters
-#     ----------
-#     coors   : tuple(np.array), list of the values of the coordinates, i.e (x, y, z)
-#     weights : np.array, values of the weights 
-#     profile : Profile, profile named tuple
-#     x0      : float, scale
-
-#     Returns
-#     -------
-#     cor_weights : np.array, corrected weights
-#     """
-    
-#     mean  = profile.mean
-#     ebins = profile.bin_edges
-#     #ibins = profile.bin_indices
-
-#     _, _, ibins = stats.binned_statistic_dd(coors, weights, 
-#                                             bins = ebins, statistic = 'count',
-#                                             expand_binnumbers = True)
-#     ibins = [b-1 for b in ibins]
-    
-#     cor_weights = _correction(weights, mean, ibins, scale)
-    
-#     return cor_weights
     
 
 def save(profile, key, ofilename):
+    """
+    
+    store the profile into a hdf5 outputfile as a DataFrame
+
+    Parameters
+    ----------
+    profile   : Profile, profile to store
+    key       : str, name of the profile, used as key in the hdf5 file
+    ofilename : str, output file name
+
+    Returns
+    -------
+    None.
+
+    """
     
     odf = {}
     names = profile._fields[:-2]
@@ -254,6 +158,21 @@ def save(profile, key, ofilename):
 
 
 def load(key, ifilename, type = Profile):
+    """
+    
+    load a Profile (or other similar object) from a input file
+
+    Parameters
+    ----------
+    key       : str, name of the profile, key of the data frame
+    ifilename : str, name of the inputfile
+    type      : Construction, optional, Default is Profile
+
+    Returns
+    -------
+    prof     : object, profile
+
+    """
     
     df     = pd.read_hdf(ifilename, key = key + '/profile')
     dfbins = pd.read_hdf(ifilename, key = key + '/bins')
@@ -277,18 +196,25 @@ def load(key, ifilename, type = Profile):
 
 def plot_profile(profile, nbins = 50, stats = 'all', coornames = ('x', 'y', 'z')):
     """
-    Plot profile
+    
+    plot the profile 
+
+    Parameters
+    ----------
+    profile   : Object, profile
+    nbins     : int, nbins, default = 50
+    stats     : str or tupe(str), list of the variables to plot, default 'all'
+    coornames : type(str), name of the coordinates of the profile
+
+    Returns
+    -------
+    None.
+
     """
     
-    #counts = profile.counts
-    #mean   = profile.mean
-    #std    = profile.std
-    #chi2   = profile.chi2
-    #pval   = profile.pvalue
     cbins  = profile.bin_centers
     ebins  = profile.bin_edges
     mask   = profile.success
-    #res    = profile.residuals
 
     def _var1(var, title):
         canvas = pltext.canvas(2, 2)
