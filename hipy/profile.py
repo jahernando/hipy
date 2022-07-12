@@ -107,7 +107,7 @@ def profile_scale(coors, weights, profile, scale = 1., mask = None):
     for isel in sels[1:]: sel = np.logical_and(sel, isel)
 
     idx    = tuple([idx[i][sel] for i in range(ndim)])
-        
+    
     ene    = weights[sel] 
     
     mean   = profile.mean
